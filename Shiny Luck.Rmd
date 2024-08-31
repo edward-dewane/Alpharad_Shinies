@@ -1,0 +1,126 @@
+---
+title: "How Lucky Was Alpharad?"
+author: "Pokelytics"
+date: "2024-08-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+After watching Alpharad's latest [youtube video](https://www.youtube.com/watch?v=lhDIz97t5iQ), I was curious about his overall luck in catching shiny pokemon.
+
+I wanted to calculate his best and worst luck, and look at his overall luck.
+
+## Shiny Odds in Pokemon Let's Go
+
+Typically in Pokemon Let's Go, the odds of encountering a shiny pokemon are 1 in 4096. However, there is a catch combo mechanic that increases shiny odds as the number of consecutively caugtht pokemon of the same species increases.
+
+The odds are represented by this table.
+
+| Catch Combo | Shiny Odds |
+|-------------|------------|
+| 1-10        | 1/4096     |
+| 11-20       | 1/1024     |
+| 21-30       | 1/512      |
+| 31+         | 3/1024     |
+
+
+To calculate the odds of catching a pokemon by a certain encounter (assuming a catch combo greater than 30), we can use the following formula:
+
+$P(x)=1-((\frac{4095}{4096})^{10}*(\frac{1023}{1024})^{10}(\frac{511}{512})^{10}(\frac{1021}{1024})^{x-30})$
+
+## Best Luck
+
+His best luck was his Charmander, which he caught in 23 encounters.
+
+```{r}
+1-((4095/4096)^10*(1023/1024)^10*(511/512)^3)
+```
+Wow! Not even a 2% chance! Very lucky Alpharad.
+
+## Worst Luck
+
+His worst luck was Tentacool, which took 1041 encounters.
+
+```{r}
+1-((4095/4096)^10*(1023/1024)^10*(511/512)^10*(1021/1024)^1011)
+```
+There was a 95% chance he would have caught it by then. That means there is only a 5% chance it would take him that long. Poor guy.
+
+
+## Expected Value of Encounters
+
+Let's calculate the expected value of encounters for Alpharad to catch a shiny pokemon.
+
+The expected value for a given probability *p* is $\frac{1} {p}$, but this probability changes with encounters, so it is not so simple.
+
+```{r}
+# Define the probabilities and ranges
+probabilities <- c(1/4096, 1/1024, 1/512, 3/1024)
+ranges <- c(10, 10, 10, Inf)
+
+# Initialize variables
+expected_value <- 0
+cumulative_prob <- 1
+
+# Calculate the expected value
+for (i in seq_along(probabilities)) {
+  if (is.infinite(ranges[i])) {
+    expected_value <- expected_value + (cumulative_prob / probabilities[i])
+  } else {
+    prob_of_not_shiny <- (1 - probabilities[i]) ^ ranges[i]
+    expected_value <- expected_value + (cumulative_prob * (1 - prob_of_not_shiny) / probabilities[i])
+    cumulative_prob <- cumulative_prob * prob_of_not_shiny
+  }
+}
+
+# Output the expected value
+expected_value
+```
+
+360.37 is the expected number of encounters.
+
+## Overall Luck
+
+Alpharad caught 16 pokemon through combo chaining.
+
+```{r}
+shinies <- read.csv("~/alpharad_shinies.csv")
+
+shinies
+
+```
+
+Since each pokemon is separate, the expected value of encounters for 16 is 16 times the expected value of encounters for 1.
+
+```{r}
+sum(shinies$Catches)
+16*expected_value
+```
+Wow! His luck was very average!
+
+Let's plot it.
+
+```{r}
+library(ggplot2)
+
+#histogram
+
+ggplot(shinies, aes(x = Catches)) +
+  geom_histogram(binwidth = 100, fill = "blue", color = "black") +
+  geom_vline(aes(xintercept= expected_value, color = "red")) +
+  labs(title = "Number of Encounters to Catch Shiny Pokemon",
+       x = "Number of Encounters",
+       y = "Number of Pokemon",
+       color = "Expected Value") +
+  theme_minimal()
+
+
+```
+
+He caught 10 pokemon in fewer encounters than expected, and 6 in more than expected, but he got really unlucky with a few of them. Overall he had extremely average luck.
+
+
+
